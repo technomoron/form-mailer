@@ -1,11 +1,11 @@
-import { apiModule, apiRoute, apiRequest, apiServer, apiError, apiAuthClass } from 'doc-api-server';
+import { ApiModule, ApiRoute, ApiRequest, ApiServer, ApiError, ApiAuthClass } from '@technomoron/api-server-base';
 import nodemailer from 'nodemailer';
 import nunjucks from 'nunjucks';
 
-import { forms } from './forms';
+import { formConfig } from './config';
 
-class formAPI extends apiModule {
-	private async post_sendform(apireq: apiRequest): Promise<[number, any]> {
+class formAPI extends ApiModule<ApiServer> {
+	private async postSendForm(apireq: ApiRequest): Promise<[number, any]> {
 		const { formid } = apireq.req.body;
 
 		console.log('Headers:', apireq.req.headers);
@@ -13,32 +13,31 @@ class formAPI extends apiModule {
 		console.log('Files:', JSON.stringify(apireq.req.files, null, 2));
 
 		if (!formid) {
-			throw new apiError({ code: 404, error: 'Missing formid field in form' });
+			throw new ApiError({ code: 404, message: 'Missing formid field in form' });
 		}
 		if (!forms[formid]) {
-			throw new apiError({ code: 404, error: `No such form ${formid}` });
+			throw new ApiError({ code: 404, message: `No such form ${formid}` });
 		}
 		const form = forms[formid];
 
-		const attachments = Array.isArray(apireq.req.files)
-			? apireq.req.files.map((file: any) => ({
-					filename: file.originalname,
-					path: file.path,
-				}))
-			: [];
+		const a = Array.isArray(apireq.req.files) ? apireq.req.files : [];
+		const attachments = a.map((file: any) => ({
+			filename: file.originalname,
+			path: file.path
+		}));
 
 		const context = {
 			formFields: apireq.req.body,
-			files: Array.isArray(apireq.req.files) ? apireq.req.files : [],
+			files: Array.isArray(apireq.req.files) ? apireq.req.files : []
 		};
 
 		nunjucks.configure({ autoescape: true });
-		const html = nunjucks.renderString(form.template, context);
+		const html = nunjucks.renderString(form.templateContent, context);
 
 		const transporter = nodemailer.createTransport({
-			host: 'm.document.no',
+			host: 'ml.yesmedia.no',
 			port: 25,
-			secure: false,
+			secure: false
 		});
 
 		const mailOptions = {
@@ -46,7 +45,7 @@ class formAPI extends apiModule {
 			to: form.rcpt,
 			subject: form.subject,
 			html,
-			attachments,
+			attachments
 		};
 
 		try {
@@ -60,17 +59,32 @@ class formAPI extends apiModule {
 		return [200, {}];
 	}
 
-	override define_routes(): apiRoute[] {
-		return [{ method: 'post', path: '/sendform', handler: this.post_sendform, auth: { type: 'none', req: 'any' } }];
+	override defineRoutes(): ApiRoute[] {
+		return [
+			{
+				method: 'post',
+				path: '/v1/sendform',
+				handler: (req) => this.postSendForm(req),
+				auth: { type: 'none', req: 'any' }
+			}
+		];
 	}
 }
 
-const server = new apiServer({
-	api_host: 'localhost',
-	api_port: 3776,
-	upload_path: 'uploads/',
-});
+const forms = formConfig();
 
-new formAPI().init(server);
+// console.log(JSON.stringify(forms, undefined, 2));
+// process.exit(0);
 
-server.start();
+try {
+	new ApiServer({
+		apiHost: 'localhost',
+		apiPort: 3776,
+		uploadPath: 'uploads/'
+	})
+		.api(new formAPI())
+		.start();
+} catch (err) {
+	console.error(err);
+	process.exit(1);
+}

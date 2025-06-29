@@ -1,4 +1,4 @@
-# doc-form-mailer
+# form-mailer
 
 Mini service for handling web form submission and sending them as mail.
 

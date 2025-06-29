@@ -3,5 +3,4 @@ export interface formType {
 	sender: string;
 	subject: string;
 	template: string;
-};
-
+}
