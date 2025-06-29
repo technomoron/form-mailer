@@ -4,3 +4,4 @@ uploads/
 dist/
 pnpm-lock.yaml
 config/
+.env

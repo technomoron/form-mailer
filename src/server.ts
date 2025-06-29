@@ -1,8 +1,39 @@
 import { ApiModule, ApiRoute, ApiRequest, ApiServer, ApiError, ApiAuthClass } from '@technomoron/api-server-base';
-import nodemailer from 'nodemailer';
+import { createTransport } from 'nodemailer';
 import nunjucks from 'nunjucks';
 
 import { formConfig } from './config';
+import { env } from './env';
+
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+
+function create_mail_transport() {
+	const args: SMTPTransport.Options = {
+		host: env.SMTP_HOST,
+		port: env.SMTP_PORT,
+		secure: env.SMTP_SECURE,
+		tls: {
+			rejectUnauthorized: env.SMTP_TLS_REJECT
+		},
+		requireTLS: true,
+		logger: true,
+		debug: true
+	};
+	const user = env.SMTP_USER;
+	const pass = env.SMTP_PASSWORD;
+	if (user && pass) {
+		args.auth = { user, pass };
+	}
+	// console.log(JSON.stringify(args, undefined, 2));
+
+	const mailer = createTransport({
+		...args
+	});
+	if (!mailer) {
+		throw new Error('Unable to create mailer');
+	}
+	return mailer;
+}
 
 class formAPI extends ApiModule<ApiServer> {
 	private async postSendForm(apireq: ApiRequest): Promise<[number, any]> {
@@ -34,11 +65,7 @@ class formAPI extends ApiModule<ApiServer> {
 		nunjucks.configure({ autoescape: true });
 		const html = nunjucks.renderString(form.templateContent, context);
 
-		const transporter = nodemailer.createTransport({
-			host: 'ml.yesmedia.no',
-			port: 25,
-			secure: false
-		});
+		const transporter = create_mail_transport();
 
 		const mailOptions = {
 			from: form.sender,
@@ -73,14 +100,15 @@ class formAPI extends ApiModule<ApiServer> {
 
 const forms = formConfig();
 
+console.log(JSON.stringify(env, undefined, 2));
 // console.log(JSON.stringify(forms, undefined, 2));
 // process.exit(0);
 
 try {
 	new ApiServer({
-		apiHost: 'localhost',
-		apiPort: 3776,
-		uploadPath: 'uploads/'
+		apiHost: env.API_HOST,
+		apiPort: env.API_PORT,
+		uploadPath: env.UPLOAD_PATH
 	})
 		.api(new formAPI())
 		.start();
