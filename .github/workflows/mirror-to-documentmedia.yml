@@ -1,0 +1,32 @@
+name: Mirror to Documentmedia/form-mailer
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # get full history
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DOC_GIT_MIRROR_FORM_MAILER }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Push to documentmedia/form-mailer
+        run: |
+          git config --global user.name "Techmoron Mirror Bot"
+          git config --global user.email "bot@technomoron.com"
+
+          git remote add mirror git@github.com:documentmedia/form-mailer.git
+          git push --force mirror main:main
