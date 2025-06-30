@@ -1,13 +1,14 @@
-import { ApiModule, ApiRoute, ApiRequest, ApiServer, ApiError, ApiAuthClass } from '@technomoron/api-server-base';
-import { createTransport } from 'nodemailer';
+import { ApiModule, ApiRoute, ApiRequest, ApiServer, ApiError, ApiServerConf } from '@technomoron/api-server-base';
+import EnvLoader, { envConfig } from '@technomoron/env-loader';
+import { createTransport, Transporter } from 'nodemailer';
 import nunjucks from 'nunjucks';
 
 import { formConfig } from './config';
-import { env } from './env';
+import { envOptions } from './env';
 
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
-function create_mail_transport() {
+function create_mail_transport(env: envConfig<typeof envOptions>): Transporter {
 	const args: SMTPTransport.Options = {
 		host: env.SMTP_HOST,
 		port: env.SMTP_PORT,
@@ -16,8 +17,8 @@ function create_mail_transport() {
 			rejectUnauthorized: env.SMTP_TLS_REJECT
 		},
 		requireTLS: true,
-		logger: true,
-		debug: true
+		logger: env.DEBUG,
+		debug: env.DEBUG
 	};
 	const user = env.SMTP_USER;
 	const pass = env.SMTP_PASSWORD;
@@ -26,7 +27,7 @@ function create_mail_transport() {
 	}
 	// console.log(JSON.stringify(args, undefined, 2));
 
-	const mailer = createTransport({
+	const mailer: Transporter = createTransport({
 		...args
 	});
 	if (!mailer) {
@@ -35,7 +36,7 @@ function create_mail_transport() {
 	return mailer;
 }
 
-class formAPI extends ApiModule<ApiServer> {
+class FormAPI extends ApiModule<FormMailer> {
 	private async postSendForm(apireq: ApiRequest): Promise<[number, any]> {
 		const { formid } = apireq.req.body;
 
@@ -46,10 +47,10 @@ class formAPI extends ApiModule<ApiServer> {
 		if (!formid) {
 			throw new ApiError({ code: 404, message: 'Missing formid field in form' });
 		}
-		if (!forms[formid]) {
+		if (!this.server.forms[formid]) {
 			throw new ApiError({ code: 404, message: `No such form ${formid}` });
 		}
-		const form = forms[formid];
+		const form = this.server.forms[formid];
 
 		const a = Array.isArray(apireq.req.files) ? apireq.req.files : [];
 		const attachments = a.map((file: any) => ({
@@ -65,8 +66,6 @@ class formAPI extends ApiModule<ApiServer> {
 		nunjucks.configure({ autoescape: true });
 		const html = nunjucks.renderString(form.templateContent, context);
 
-		const transporter = create_mail_transport();
-
 		const mailOptions = {
 			from: form.sender,
 			to: form.rcpt,
@@ -76,7 +75,7 @@ class formAPI extends ApiModule<ApiServer> {
 		};
 
 		try {
-			const info = await transporter.sendMail(mailOptions);
+			const info = await this.server.transporter.sendMail(mailOptions);
 			console.log('Email sent: ' + info.response);
 		} catch (error) {
 			console.error('Error sending email:', error);
@@ -98,21 +97,31 @@ class formAPI extends ApiModule<ApiServer> {
 	}
 }
 
-const forms = formConfig();
+export class FormMailer extends ApiServer {
+	public readonly env: envConfig<typeof envOptions>;
+	public readonly forms: ReturnType<typeof formConfig>;
+	public readonly transporter: Transporter<SMTPTransport.SentMessageInfo>;
 
-console.log(JSON.stringify(env, undefined, 2));
-// console.log(JSON.stringify(forms, undefined, 2));
-// process.exit(0);
+	constructor(apiOptions?: Partial<ApiServerConf>, forms: ReturnType<typeof formConfig> | undefined = undefined) {
+		apiOptions ||= {};
+		const env = EnvLoader.createConfigProxy(envOptions, { debug: apiOptions.debug });
+		if (env.DEBUG) {
+			apiOptions.debug = true;
+		}
+		if (apiOptions.debug) {
+			EnvLoader.genTemplate(envOptions, './.env.sample');
+		}
+		super({
+			apiHost: env.API_HOST,
+			apiPort: env.API_PORT,
+			uploadPath: env.UPLOAD_PATH,
+			...apiOptions
+		});
 
-try {
-	new ApiServer({
-		apiHost: env.API_HOST,
-		apiPort: env.API_PORT,
-		uploadPath: env.UPLOAD_PATH
-	})
-		.api(new formAPI())
-		.start();
-} catch (err) {
-	console.error(err);
-	process.exit(1);
+		this.env = env;
+		this.forms = forms || formConfig();
+		this.transporter = create_mail_transport(env);
+
+		this.api(new FormAPI(this.forms));
+	}
 }

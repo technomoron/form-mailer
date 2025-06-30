@@ -1,0 +1,8 @@
+{
+  "testform": {
+    "rcpt": "test@example.com",
+    "sender": "Mother of All Forms Has Spoken <noreply@mydomain.com>",
+    "subject": "A New Form Has Been Gifted You",
+    "template": "standard.njk"
+  }
+}

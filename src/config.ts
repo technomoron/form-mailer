@@ -13,15 +13,15 @@ const formDefinitionSchema = z.object({
 
 const formsJsonSchema = z.record(formDefinitionSchema);
 
-export type FormDefinition = z.infer<typeof formDefinitionSchema>;
+type FormDef = z.infer<typeof formDefinitionSchema>;
 
-export interface FormConfig extends FormDefinition {
+export interface FormDefFull extends FormDef {
 	templateFile: string;
 	templateContent: string;
 	verifyTemplate(): void;
 }
 
-export type FormsConfig = Record<string, FormConfig>;
+export type FormConfig = Record<string, FormDefFull>;
 
 const configDir = path.resolve(__dirname) + '/../config';
 const templatesPath = path.join(configDir, 'templates');
@@ -36,13 +36,13 @@ const dummyContext = {
 	files: [{ originalname: 'file.txt', path: '/uploads/file.txt' }]
 };
 
-export function formConfig(): FormsConfig {
+export function formConfig(): FormConfig {
 	const configPath = path.join(configDir, 'forms.config.json');
 	const rawJson = fs.readFileSync(configPath, 'utf-8');
 	const parsed = JSON.parse(rawJson);
 	const validated = formsJsonSchema.parse(parsed);
 
-	const result: FormsConfig = {};
+	const result: FormConfig = {};
 
 	for (const [key, form] of Object.entries(validated)) {
 		const templatePath = path.join(templatesPath, form.template);

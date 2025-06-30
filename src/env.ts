@@ -1,4 +1,4 @@
-import EnvLoader, { defineEnvOptions } from '@technomoron/env-loader';
+import { defineEnvOptions } from '@technomoron/env-loader';
 
 export const envOptions = defineEnvOptions({
 	NODE_ENV: {
@@ -14,6 +14,11 @@ export const envOptions = defineEnvOptions({
 	API_HOST: {
 		description: 'Sets the local IP address for the API to listen at',
 		default: '0.0.0.0'
+	},
+	DEBUG: {
+		description: 'Enable debug output, including nodemailer and API',
+		default: false,
+		type: 'boolean'
 	},
 	SMTP_HOST: {
 		description: 'Hostname of SMTP sending host',
@@ -52,5 +57,3 @@ export const envOptions = defineEnvOptions({
 		default: './uploads/'
 	}
 });
-
-export const env = EnvLoader.createConfigProxy(envOptions, { debug: true });

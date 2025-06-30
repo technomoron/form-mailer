@@ -1,45 +1,152 @@
-# form-mailer
+# 📬 form-mailer
 
-Mini service for handling web form submission and sending them as mail.
+**Mini service for handling web form submissions and sending them as email.**
 
-## Description.
+---
 
-The server has only one endpoint, of type POST:
+## Description
 
-/sendform
+This server exposes a single endpoint for sending form submissions via email.
 
-Only one argument is required:
+### POST `/api/v1/sendform`
 
-formid
+This endpoint accepts multipart form data including:
 
-The value of this argument must match a form defined in src/forms.ts
+- `formid` – **Required**. Must match a configured form ID defined in `config/forms.config.json`.
+- Any other form fields – Included in the rendered email body.
+- File uploads – All attached files are sent as email attachments.
 
-The formType in this config consists of four fields:
+The server uses **Nunjucks templates** to render the email content and **Nodemailer** to deliver the message.
 
-rcpt: The receiving email for the submission
-sender: The email/name of the sender for outgoing template
-subject: The subject of the outgoing mail
-template: A nunjucts template string to use for the outgoing mail.
+---
 
-All other form fields and attached files are passed on by default.
+## Mail Layout
+
+Each configured form uses a corresponding `.njk` (Nunjucks) template. These templates are rendered with the following context:
+
+```ts
+{
+  formFields: { ...formData },
+  files: [
+    {
+      originalname: 'filename.ext',
+      path: '/path/to/uploaded/file'
+    },
+    ...
+  ]
+}
+```
+
+This allows for fully custom email layouts that dynamically incorporate submitted form values and attachments.
+
+---
 
 ## Configuration
 
-No configuration is currently possible. It binds to localhost port 3776,
-uses m.document.no:25 (no secure) as outgoing mail server.
+### Mail Form Configuration (`forms.config.json`)
 
-## Mail layout
+Defines available forms. Each form entry describes the email details and template used.
 
-Currently uses nunjucks to create an outgoing mail template. The default
-template only dumps the form submissions fields and attaches all files
-posted to the /sendform endpoint.
+#### 🧾 Schema
 
-## Example
+Each form must include:
 
+- `rcpt` *(string)*: Recipient email address (must be valid).
+- `sender` *(string)*: Sender email or name (used in the `From:` field).
+- `subject` *(string)*: Subject of the outgoing email.
+- `template` *(string)*: File name of a `.njk` template inside `config/templates/`.
+
+#### Directory Structure
+
+```
+config/
+├── forms.config.json         # Form configurations
+└── templates/                # Email templates
+    ├── contact.njk
+    └── feedback.njk
+```
+
+#### Example
+
+```json
+{
+  "contact": {
+    "rcpt": "support@example.com",
+    "sender": "noreply@example.com",
+    "subject": "New contact form submission",
+    "template": "contact.njk"
+  },
+  "feedback": {
+    "rcpt": "feedback@example.com",
+    "sender": "noreply@example.com",
+    "subject": "Feedback received",
+    "template": "feedback.njk"
+  }
+}
+```
+
+#### Requirements
+
+- Each `template` file **must exist** under `config/templates/`.
+- Templates must be valid [Nunjucks](https://mozilla.github.io/nunjucks/) and renderable with the expected context.
+- Templates are pre-validated on startup.
+
+---
+
+## Environment Variables
+
+Below is the list of available options:
+
+| Variable             | Type     | Description                                             | Default       |
+|----------------------|----------|---------------------------------------------------------|---------------|
+| `NODE_ENV`           | string   | Specifies the environment (`development`, `production`, `staging`) | `development` |
+| `API_PORT`           | number   | Port the API server listens on                          | `3776`        |
+| `API_HOST`           | string   | Host/IP address the server binds to                     | `0.0.0.0`     |
+| `SMTP_HOST`          | string   | SMTP server hostname                                    | `localhost`   |
+| `SMTP_PORT`          | number   | SMTP server port                                        | `587`         |
+| `SMTP_REQUIRE_TLS`   | boolean  | Whether to require TLS                                  | `true`        |
+| `SMTP_SECURE`        | boolean  | Whether to use a secure connection (SSL/TLS)            | `false`       |
+| `SMTP_TLS_REJECT`    | boolean  | Reject invalid TLS certificates                         | `false`       |
+| `SMTP_USER`          | string   | Username for SMTP authentication                        | `""`          |
+| `SMTP_PASSWORD`      | string   | Password for SMTP authentication                        | `""`          |
+| `UPLOAD_PATH`        | string   | Directory path to store uploaded files                  | `./uploads/`  |
+
+These variables can be provided via `.env` file or system environment variables.
+
+---
+
+## Example Request
+
+~~~bash
 curl -X POST http://localhost:3776/api/v1/sendform \
- -F "formid=myformid" \
- -F "field1=value1" \
- -F "file=@someimportantfile.txt"
+  -F "formid=contact" \
+  -F "name=John Doe" \
+  -F "email=john@example.com" \
+  -F "message=Hello there!" \
+  -F "file=@someimportantfile.txt"
+~~~
 
-This command will post an argument field1 and attach a file, sending it
-to the form defined by 'formid' (see src/forms.ts - and make your own!)
+This sends form data to the form identified by `contact` in `forms.config.json`, and attaches the given file to the outgoing email.
+
+---
+
+## Extensibility
+
+- Add new forms by editing `forms.config.json` and adding matching templates.
+- Customize email layout with Nunjucks logic.
+- Deploy securely behind a proxy or authentication middleware, if needed.
+
+---
+
+## Summary
+
+- Validates and parses form config on startup
+- Sends rich HTML emails with attachments
+- Supports multiple forms and dynamic templates
+- Uses environment-based SMTP setup for portability
+
+## Examples
+
+An example config is provided in ./config-example
+
+A default .env file is provided in .env.sample
