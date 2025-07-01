@@ -15,6 +15,10 @@ export const envOptions = defineEnvOptions({
 		description: 'Sets the local IP address for the API to listen at',
 		default: '0.0.0.0'
 	},
+	CONFIG_PATH: {
+		description: 'Configuration path',
+		default: './config'
+	},
 	DEBUG: {
 		description: 'Enable debug output, including nodemailer and API',
 		default: false,

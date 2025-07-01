@@ -1,3 +1,5 @@
+import path from 'path';
+
 import { ApiModule, ApiRoute, ApiRequest, ApiServer, ApiError, ApiServerConf } from '@technomoron/api-server-base';
 import EnvLoader, { envConfig } from '@technomoron/env-loader';
 import { createTransport, Transporter } from 'nodemailer';
@@ -118,8 +120,12 @@ export class FormMailer extends ApiServer {
 			...apiOptions
 		});
 
+		const cfgpath = env.CONFIG_PATH || path.join(process.cwd(), 'config');
+
+		console.log(cfgpath);
+
 		this.env = env;
-		this.forms = forms || formConfig();
+		this.forms = forms || formConfig(cfgpath);
 		this.transporter = create_mail_transport(env);
 
 		this.api(new FormAPI(this.forms));
