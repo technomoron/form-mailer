@@ -122,7 +122,9 @@ export class FormMailer extends ApiServer {
 
 		const cfgpath = env.CONFIG_PATH || path.join(process.cwd(), 'config');
 
-		console.log(cfgpath);
+		if (apiOptions.debug) {
+			console.log(`Setting configuration path to ${cfgpath}`);
+		}
 
 		this.env = env;
 		this.forms = forms || formConfig(cfgpath);

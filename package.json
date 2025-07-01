@@ -1,6 +1,6 @@
 {
 	"name": "@technomoron/form-mailer",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Simple, customizable form submission mail gateway",
 	"main": "dist/cjs/index.js",
 	"module": "dist/esm/index.js",
@@ -29,8 +29,8 @@
 		"start": "NODE_ENV=staging node dist/server.js",
 		"dev": "NODE_ENV=development nodemon --watch .env --watch 'src/**/*.ts' --watch 'example.ts' --watch 'config/**' --exec 'tsx' example.ts",
 		"watch": "tsc -w",
-		"lint": "eslint --ext .ts,.vue ./",
-		"lintfix": "eslint --fix --ext .ts,.vue ./",
+		"lint": "eslint --ext .ts,.vue ./src",
+		"lintfix": "eslint --fix --ext .ts,.vue ./src",
 		"format": "npm run lintfix && npm run pretty",
 		"pretty": "prettier --write \"**/*.{jsx,ts,tsx,vue,json,css,scss,md}\"",
 		"cleanbuild": "rm -rf ./dist/ && npm run lintfix && npm run format && npm run build"
